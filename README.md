@@ -1,12 +1,12 @@
 # Steam Review Summary MCP
 
-An MCP (Model Context Protocol) server that analyzes and summarizes Steam game reviews.
+An MCP (Model Context Protocol) server for analyzing and summarizing Steam game reviews.
 
 It allows AI clients (such as LibreChat, ChatGPT Apps, Cursor, Claude Desktop, etc.) to query Steam reviews and receive structured summaries including sentiment analysis and purchase recommendations.
 
 The server focuses on Chinese Steam reviews first, with automatic fallback to English when necessary.
 
-**Features:**
+## Features
 - 🔍 Search Steam games by name
 - 🎮 Automatically resolve Steam AppID
 - 📊 Summarize Steam reviews
@@ -18,22 +18,29 @@ The server focuses on Chinese Steam reviews first, with automatic fallback to En
 - 🧾 Natural language purchase recommendation
 - 🔌 Compatible with MCP clients
 
-## Usage
+## Endpoints
 
-- MCP Server URL: https://steam-review-summary-mcp.junbinz.workers.dev/mcp
-- Transport: Streamable HTTP
-- Authentication: No
+### For ChatGPT
+- **MCP Server URL:** https://steam-review-summary-chatgpt-widget.junbinz.workers.dev/mcp
+- **Authentication:** None
 
-## Deploy to Cloudflare Workers
+### For Other MCP Clients
+- **MCP Server URL:** https://steam-review-summary-mcp.junbinz.workers.dev/mcp
+- **Transport:** Streamable HTTP
+- **Authentication:** None
 
-This implementation is optimized for Cloudflare Workers Free:
+## Deployment
+
+This implementation is optimized for Cloudflare Workers Free.
+
+### Highlights
 - Stateless MCP over Streamable HTTP
-- No Express or Node server
+- No Express or long-running Node server required
 - KV-based caching to reduce Steam traffic
-- Lower default review cap to stay well within Workers limits
-- JSON response mode to keep the transport simple and client-friendly
+- Lower default review caps to stay within Workers limits
+- JSON-based responses for simple, client-friendly transport
 
-**Steps:**
+### Steps
 1. Install Wrangler (Cloudflare CLI): `npm install -g wrangler`
 
 2. Login: `wrangler login`

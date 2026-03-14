@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Steam 评测摘要</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: Canvas;
+      --fg: CanvasText;
+      --muted: color-mix(in srgb, CanvasText 60%, transparent);
+      --border: color-mix(in srgb, CanvasText 16%, transparent);
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 14px/1.5 system-ui, sans-serif;
+    }
+    .card {
+      margin: 8px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .muted { color: var(--muted); }
+    .score { font-size: 30px; font-weight: 700; text-align: right; }
+    .pill {
+      display: inline-block;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      margin-right: 6px;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    h1, h2, p, ul { margin: 0 0 10px; }
+    h1 { font-size: 18px; }
+    h2 { font-size: 15px; margin-top: 14px; }
+    ul { padding-left: 18px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div>
+        <h1>Steam 评测摘要</h1>
+        <div id="appid" class="muted"></div>
+      </div>
+      <div>
+        <div class="muted">购买推荐分</div>
+        <div id="score" class="score">--/100</div>
+      </div>
+    </div>
+
+    <div id="levels"></div>
+
+    <h2>游玩时长统计</h2>
+    <ul id="playtime"></ul>
+
+    <h2>正面反馈</h2>
+    <ul id="positive"></ul>
+
+    <h2>负面反馈</h2>
+    <ul id="negative"></ul>
+
+    <h2>结论</h2>
+    <p id="summary"></p>
+  </div>
+
+  <script>
+    function byId(id) { return document.getElementById(id); }
+
+    function setText(id, value) {
+      const el = byId(id);
+      if (el) el.textContent = value ?? "";
+    }
+
+    function setList(id, items) {
+      const root = byId(id);
+      if (!root) return;
+      root.innerHTML = "";
+      (Array.isArray(items) ? items : []).forEach((item) => {
+        const li = document.createElement("li");
+        li.textContent = String(item);
+        root.appendChild(li);
+      });
+    }
+
+    function makePills(data) {
+      const levels = byId("levels");
+      if (!levels) return;
+      levels.innerHTML = "";
+
+      const overall = data?.steamLevels?.overall?.review_score_desc;
+      const recent = data?.steamLevels?.recentOverall?.review_score_desc;
+      const combined = data?.steamLevels?.combinedSelectedDerived?.reviewScoreDesc;
+
+      [overall ? `总体：${overall}` : null, recent ? `近期：${recent}` : null, combined ? `所选语言：${combined}` : null]
+        .filter(Boolean)
+        .forEach((label) => {
+          const span = document.createElement("span");
+          span.className = "pill";
+          span.textContent = label;
+          levels.appendChild(span);
+        });
+    }
+
+    function buildPlaytimeList(stats) {
+      if (!stats) return [];
+      const at = stats.hoursAtReview || {};
+      const total = stats.totalHours || {};
+      return [
+        `评测时长样本数：${stats.sampleSizeAtReview ?? 0}`,
+        `总游玩时长样本数：${stats.sampleSizeTotal ?? 0}`,
+        `评测时长（小时）：平均 ${at.average ?? 0}，中位数 ${at.median ?? 0}`,
+        `总游玩时长（小时）：平均 ${total.average ?? 0}，中位数 ${total.median ?? 0}`
+      ];
+    }
+
+    function extractCard(payload) {
+      if (!payload || typeof payload !== "object") return null;
+
+      if (payload.card && typeof payload.card === "object") return payload.card;
+      if (payload.structuredContent?.card && typeof payload.structuredContent.card === "object") return payload.structuredContent.card;
+      if (payload.result?.structuredContent?.card && typeof payload.result.structuredContent.card === "object") return payload.result.structuredContent.card;
+      if (payload.params?.result?.structuredContent?.card && typeof payload.params.result.structuredContent.card === "object") return payload.params.result.structuredContent.card;
+
+      return null;
+    }
+
+    function renderCard(data) {
+      if (!data) return;
+      setText("appid", data.appid ? `AppID: ${data.appid}` : "");
+      setText("score", `${data.score ?? "--"}/100`);
+      setText("summary", data.recommendationSummary ?? "");
+      makePills(data);
+      setList("playtime", buildPlaytimeList(data.playtimeStats));
+      setList("positive", Array.isArray(data.positiveBullets) ? data.positiveBullets : []);
+      setList("negative", Array.isArray(data.negativeBullets) ? data.negativeBullets : []);
+    }
+
+    function tryRender(raw) {
+      const card = extractCard(raw);
+      if (card) renderCard(card);
+    }
+
+    window.addEventListener("message", (event) => {
+      tryRender(event.data);
+    });
+
+    window.addEventListener("openai:set_globals", (event) => {
+      tryRender(event?.detail?.globals?.toolOutput);
+      tryRender(event?.detail?.toolOutput);
+    }, { passive: true });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      tryRender(window.openai?.toolOutput);
+    });
+  </script>
+</body>
+</html>
